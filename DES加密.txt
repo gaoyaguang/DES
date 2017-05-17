@@ -1,0 +1,401 @@
+
+Java
+---------------------------------------------------------------------------------------------------------------------
+package org.feinno.icm.util;
+
+import java.security.SecureRandom;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.DESKeySpec;
+
+public class TestDesUtil {
+
+	public static void main(String[] args) {
+		try {
+			String password = "";
+//			String password = "";
+			String originParam = "";
+			String result = "";
+			
+//			String result = encodeDES(password, originParam);
+//			System.out.println("加密结果：" + result);
+			
+			String str = decoderDES(password, result);
+			System.out.println("解密验证：" + str);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+     * 解密DES
+     * @param key 密钥，长度必须是8的倍数
+     * @param data 数据源
+     * @return 解密内容
+     */
+    public final static String decoderDES(String key,String data) {
+        try {
+            // DES算法要求有一个可信任的随机数源
+            SecureRandom sr = new SecureRandom();
+            // 从原始密匙数据创建一个DESKeySpec对象
+            DESKeySpec dks = new DESKeySpec(key.getBytes("utf-8"));
+            // 创建一个密匙工厂，然后用它把DESKeySpec对象转换成一个SecretKey对象
+            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DES");
+            SecretKey securekey = keyFactory.generateSecret(dks);
+            // Cipher对象实际完成解密操作
+            Cipher cipher = Cipher.getInstance("DES");
+            // 用密匙初始化Cipher对象
+            cipher.init(Cipher.DECRYPT_MODE, securekey, sr);
+            // 正式执行解密操作
+            return new String(cipher.doFinal(hexStr2ByteArr(data)));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public final static String encodeDES(String key,String data) {
+        try {
+            // DES算法要求有一个可信任的随机数源
+            SecureRandom sr = new SecureRandom();
+            // 从原始密匙数据创建DESKeySpec对象
+            DESKeySpec dks = new DESKeySpec(key.getBytes("utf-8"));
+            // 创建一个密匙工厂，然后用它把DESKeySpec转换成一个SecretKey对象
+            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DES");
+            SecretKey securekey = keyFactory.generateSecret(dks);
+            // Cipher对象实际完成加密操作
+            Cipher cipher = Cipher.getInstance("DES");
+            // 用密匙初始化Cipher对象
+            cipher.init(Cipher.ENCRYPT_MODE, securekey, sr);
+            // 执行加密操作
+            byte[] buf = cipher.doFinal(data.getBytes("utf-8"));
+            return byteArr2HexStr(buf);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    public static byte[] hexStr2ByteArr(String strIn) throws Exception {
+		byte[] arrB = strIn.getBytes();
+		int iLen = arrB.length;
+
+		// 两个字符表示一个字节，所以字节数组长度是字符串长度除以2
+		byte[] arrOut = new byte[iLen / 2];
+		for (int i = 0; i < iLen; i = i + 2) {
+			String strTmp = new String(arrB, i, 2);
+			arrOut[i / 2] = (byte) Integer.parseInt(strTmp, 16);
+		}
+		return arrOut;
+	}
+    
+    public static String byteArr2HexStr(byte[] arrB) throws Exception {
+		int iLen = arrB.length;
+		// 每个byte用两个字符才能表示，所以字符串的长度是数组长度的两倍
+		StringBuffer sb = new StringBuffer(iLen * 2);
+		for (int i = 0; i < iLen; i++) {
+			int intTmp = arrB[i];
+			// 把负数转换为正数
+			while (intTmp < 0) {
+				intTmp = intTmp + 256;
+			}
+			// 小于0F的数需要在前面补0
+			if (intTmp < 16) {
+				sb.append("0");
+			}
+			sb.append(Integer.toString(intTmp, 16));
+		}
+		return sb.toString();
+	}
+}
+---------------------------------------------------------------------------------------------------------------------
+
+
+PHP
+---------------------------------------------------------------------------------------------------------------------
+<?php
+    class JoDES {
+    private static $_instance = NULL;
+    /**
+     * @return JoDES
+     */
+    public static function share() {
+        if (is_null(self::$_instance)) {
+            self::$_instance = new JoDES();
+        }
+        return self::$_instance;
+    }
+ 
+    /**
+     * 加密
+     * @param string $str 要处理的字符串
+     * @param string $key 加密Key，为8个字节长度
+     * @return string
+     */
+    public function encode($str, $key) {
+        $size = mcrypt_get_block_size(MCRYPT_DES, MCRYPT_MODE_ECB);
+        $str = $this->pkcs5Pad($str, $size);
+        $aaa = mcrypt_ecb(MCRYPT_DES, $key, $str, MCRYPT_ENCRYPT, $key);
+        $ret = bin2hex($aaa);
+        return $ret;
+    }
+ 
+    /**
+     * 解密
+     * @param string $str 要处理的字符串
+     * @param string $key 解密Key，为8个字节长度
+     * @return string
+     */
+    public function decode($str, $key) {
+        $strBin = $this->hex2binx($str);
+        $str = mcrypt_ecb(MCRYPT_DES, $key, $strBin, MCRYPT_DECRYPT, $key);
+        $str = $this->pkcs5Unpad($str);
+        return $str;
+    }
+ 
+    function hex2binx( $str ) {
+        $sbin = "";
+        $len = strlen( $str );
+        for ( $i = 0; $i < $len; $i += 2 ) {
+            $sbin .= pack( "H*", substr( $str, $i, 2 ) );
+        }
+
+        return $sbin;
+    }
+ 
+    function pkcs5Pad($text, $blocksize) {
+        $pad = $blocksize - (strlen($text) % $blocksize);
+        return $text . str_repeat(chr($pad), $pad);
+    }
+ 
+    function pkcs5Unpad($text) {
+        $pad = ord($text {strlen($text) - 1});
+        if ($pad > strlen($text))
+            return false;
+ 
+        if (strspn($text, chr($pad), strlen($text) - $pad) != $pad)
+            return false;
+ 
+        return substr($text, 0, - 1 * $pad);
+    }
+ 
+}
+     $des = JoDES::share();
+     echo $des->encode("13904732296","8bt2oiMP");
+     echo "\n";
+     echo $des->decode("4c36964bd4ddb06bbd23ac98345f1507","8bt2oiMP");
+?>
+---------------------------------------------------------------------------------------------------------------------
+
+
+C#
+---------------------------------------------------------------------------------------------------------------------
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Security.Cryptography;
+using System.IO;
+
+namespace WindowsFormsApplication1
+{
+    public class EncryptAndDecrypt
+    {
+        private static byte[] IV = { 0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF };
+
+        public static string DesEncrypt(string encryptString, string sKey) //数据为十六进制
+        {
+            try
+            {
+                byte[] keyBytes = Encoding.UTF8.GetBytes(sKey);
+                byte[] keyIV = keyBytes;
+                byte[] inputByteArray = Encoding.UTF8.GetBytes(encryptString);
+
+                DESCryptoServiceProvider desProvider = new DESCryptoServiceProvider();
+
+                // java 默认的是ECB模式，PKCS5padding；c#默认的CBC模式，PKCS7padding 所以这里我们默认使用ECB方式
+                desProvider.Mode = CipherMode.ECB;
+                MemoryStream memStream = new MemoryStream();
+                CryptoStream crypStream = new CryptoStream(memStream, desProvider.CreateEncryptor(keyBytes, keyIV), CryptoStreamMode.Write);
+
+                crypStream.Write(inputByteArray, 0, inputByteArray.Length);
+                crypStream.FlushFinalBlock();
+                // return Convert.ToBase64String(memStream.ToArray());
+                return BitConverter.ToString(memStream.ToArray()).Replace("-", string.Empty).ToLower();
+
+            }
+            catch
+            {
+                return encryptString;
+            }
+        }
+
+        /// <summary>
+        /// DES解密算法
+        /// </summary>
+        /// <param name="decryptString">要解密的字符串</param>
+        /// <param name="sKey">加密Key</param>
+        /// <returns>正确返回加密后的结果，错误返回源字符串</returns>
+        public static string DESDecrypt(string decryptString, string sKey)
+        {
+            try
+            {
+                DESCryptoServiceProvider des = new DESCryptoServiceProvider();
+                des.Mode = CipherMode.ECB;
+                byte[] inputByteArray = new byte[decryptString.Length / 2];
+                for (int x = 0; x < decryptString.Length / 2; x++)
+                {
+                    int i = (Convert.ToInt32(decryptString.Substring(x * 2, 2), 16));
+                    inputByteArray[x] = (byte)i;
+                }
+                des.Key = ASCIIEncoding.ASCII.GetBytes(sKey);
+                des.IV = ASCIIEncoding.ASCII.GetBytes(sKey);
+                MemoryStream ms = new MemoryStream();
+                CryptoStream cs = new CryptoStream(ms, des.CreateDecryptor(), CryptoStreamMode.Write);
+                cs.Write(inputByteArray, 0, inputByteArray.Length);
+                cs.FlushFinalBlock();
+                StringBuilder ret = new StringBuilder();
+                return System.Text.Encoding.Default.GetString(ms.ToArray());
+            }
+            catch (Exception)
+            {
+                return decryptString;
+            }
+
+        }
+    }
+}
+
+---------------------------------------------------------------------------------------------------------------------
+
+
+Python
+---------------------------------------------------------------------------------------------------------------------
+import binascii
+import pyDes
+data = '13904732296'
+
+k = pyDes.des("8bt2oiMP",pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
+
+d = k.encrypt(data)
+e = k.decrypt(d)
+
+d = binascii.hexlify(k.encrypt(data))
+f = k.decrypt(binascii.unhexlify(d))
+
+print ("ENCRYPTED:%r" % str(d, encoding = "UTF-8"))
+print ("DNCRYPTED:%r" % str(e, encoding = "UTF-8"))
+print ("DNCRYPTED:%r" % str(f, encoding = "UTF-8"))
+print ("data:%r" % data)
+e = str(e, encoding = "UTF-8")
+if e == data:
+    print('yes');
+else:
+    print('no');
+	
+
+---------------------------------------------------------------------------------------------------------------------
+
+
+Ruby
+---------------------------------------------------------------------------------------------------------------------
+class Des  
+  require 'openssl'  
+  require 'base64'  
+  ALG = 'DES-ECB'  
+  KEY = "8bt2oiMP"     #你的密钥
+#   DES_KEY = "8bt2oiMP"          #任意固定的值
+  
+  #加密  
+  def encode(str)  
+    des = OpenSSL::Cipher::Cipher.new(ALG)  
+    des.encrypt
+    des.key = KEY
+    cipher = des.update(str)
+    cipher << des.final
+    str = ""
+    cipher.each_byte {|c| str += ("%02x" % c);}
+    return str
+  end  
+  
+  #解密    
+  def decode(str)  
+    des = OpenSSL::Cipher::Cipher.new("DES-ECB")
+    des.decrypt
+    des.key = KEY
+    result = des.update([str].pack('H*'))
+    result << des.final
+  end  
+end  
+  
+ require 'pp'  
+ des = Des.new  
+ str = '13904732296'  
+ pp '=====encrypt====='  
+ str = des.encode(str)  
+ pp str 
+  
+ pp  '=====decrypt====='  
+ pp des.decode(str)
+
+---------------------------------------------------------------------------------------------------------------------
+
+
+NodeJs
+---------------------------------------------------------------------------------------------------------------------
+ 
+var assert = require('assert');  
+var crypto = require('crypto');  
+  
+function test_des(param) {  
+    var key = new Buffer(param.key);  
+    var iv = new Buffer(param.iv ? param.iv : 0)  
+    var plaintext = param.plaintext  
+    var alg = param.alg  
+    var autoPad = param.autoPad  
+      
+    //encrypt  
+    var cipher = crypto.createCipheriv(alg, key, iv);  
+    cipher.setAutoPadding(autoPad)  //default true  
+    var ciph = cipher.update(plaintext, 'utf8', 'hex');  
+    ciph += cipher.final('hex');  
+    console.log(alg, ciph)  
+  
+    //decrypt  
+    var decipher = crypto.createDecipheriv(alg, key, iv);  
+    cipher.setAutoPadding(autoPad)  
+    var txt = decipher.update(ciph, 'hex', 'utf8');  
+    txt += decipher.final('utf8');      
+    assert.equal(txt, plaintext, 'fail');  
+    console.log(alg, txt)  
+}  
+  
+test_des({  
+    alg: 'des-ecb',  
+    autoPad: true,  
+    key: '8bt2oiMP',  
+    plaintext: '13904732296',  
+    iv: null  
+}) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
